@@ -1,15 +1,5 @@
 #include "MKL25Z4.h"
-#include <zephyr/kernel.h>
-
-void delayMs (int n) {
-    /* Função: Espera n milisegundos */
-    /* esta função depende do clock default do microcontrolador. Para o KL25Z a frequência é 21 MHz aproximadamente. 
-    O valor do contador deverá ser ajustado para se conseguir o tempo de espera desejado. */
-	volatile int i;
-	volatile int j;
-	for (i = 0; i < n; i++)
-		for (j = 0; j < 7000; j++) {}
-}
+//#include <zephyr/kernel.h>
 
 int main(void) {
     // 1. Ative o clock da GPIO usada pelo canal ADC
@@ -37,7 +27,15 @@ int main(void) {
     //ADC0->SC1[0] &= ~ADC_SC1_DIFF_MASK; // SINGLE-ENDED (default -> 0)
     //ADC0->SC1[0] = ADC_SC1_ADCH(8); // Canal de entrada: CH0
 
+    // configurando leds:
+    GPIOB->PDDR |= (1<<19);
+    PORTB->PCR[19] = PORT_PCR_MUX(1);
+    GPIOB->PDOR |= (1<<19); // desliga led verde
 
+    SIM->SCGC5 |= SIM_SCGC5_PORTD_MASK;
+    GPIOD->PDDR |= (1<<1);
+    PORTD->PCR[1] = PORT_PCR_MUX(1);
+    GPIOD->PDOR |= (1<<1); // desliga led azul
 
 
 
@@ -55,7 +53,16 @@ int main(void) {
     int resultado;
     resultado = ADC0->R[0];
 
-
+    // led azul liga quando for 3.3V
+    // led verde liga quando for 0V
+    if (resultado > 255/2) {
+        GPIOB->PDOR |= (1<<19); // verde
+        GPIOD->PDOR &= ~(1<<1); // liga azul (-> 0)
+        
+    } else {
+        GPIOB->PDOR &= ~(1<<19); // rde
+        GPIOD->PDOR |= (1<<1); // azul
+    }
 
     }
 
