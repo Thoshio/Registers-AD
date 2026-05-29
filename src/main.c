@@ -1,15 +1,5 @@
 #include "MKL25Z4.h"
-/* Define o endereço do registrador SIM_SCGC5 (Porta B: 10)*/
-#define SIM_SCGC5 (*((volatile unsigned int*)0x40048038))
-
-/* Define o endereço do registrador GPIOB_PDDR */
-#define GPIOB_PDDR (*((volatile unsigned int*)0x400FF054))
-
-/* Define o endereço do registrador GPIOB_PDOR */
-#define GPIOB_PDOR (*((volatile unsigned int*)0x400FF040))
-
-/* Define o endereço do registrador PORTB_PCR19 */
-#define PORTB_PCR19 (*((volatile unsigned int*)0x4004A04C))
+#include <zephyr/kernel.h>
 
 void delayMs (int n) {
     /* Função: Espera n milisegundos */
@@ -22,25 +12,51 @@ void delayMs (int n) {
 }
 
 int main(void) {
+    // 1. Ative o clock da GPIO usada pelo canal ADC
     SIM->SCGC5 |= SIM_SCGC5_PORTB_MASK;
-    // ANTES: SIM_SCGC5 |= (1<<10);
-    
-    GPIOB->PDDR |= (1<<19);
-    // ANTES: GPIOB_PDDR |= (1<<19);
 
-    PORTB->PCR[19] = PORT_PCR_MUX(1);
-    // ANTES:
-    // PORTB_PCR19 |= (1<<8);
-    // PORTB_PCR19 &= ~(1<<9);
-    // PORTB_PCR19 &= ~(1<<10);
+    // 2. Defina o bit MUX do PORTX_PCRn para o pino de entrada do ADC
+    PORTB->PCR[0] = PORT_PCR_MUX(0);
+    // por default os pinos são setados como inputs, então não precisamos da linha abaixo
+    // GPIOB->PDDR &= ~(1<<0);
+
+    // 3. Ative o clock para o modulo ADC usando o registrador SIM_SCGC6
+    SIM->SCGC6 |= SIM_SCGC6_ADC0_MASK;
+
+    // 4. Escolha o tipo de trigger para inicar a conversao analógica digital usando o registrador ADC0_SC2
+    //ADC0->SC2 &= ~(1<<6); // SOFTWARE -> default
+
+    // 5. Escolha a fonte de clock e a resolucao usando o registrador ADC0_CFG1
+    // default -> 0
+    //ADC0->CFG1 = ADC_CFG1_MODE(2); // RESOLUCAO (10)
+    //ADC0->CFG1 = ADC_CFG1_ADICLK(1); // CLOCK (BusClock/2)
+
+    // 6. Selecione o canal de entrada ADC usando o registro ADC0_SC1A
+    // certifique-se que a interrupcao esteja DESabilitada e usando single ended
+    //ADC0->SC1[0] &= ~ADC_SC1_AIEN_MASK; // INTERRUPCAO (default -> 0)
+    //ADC0->SC1[0] &= ~ADC_SC1_DIFF_MASK; // SINGLE-ENDED (default -> 0)
+    //ADC0->SC1[0] = ADC_SC1_ADCH(8); // Canal de entrada: CH0
+
+
+
+
 
     for(;;) {
-        GPIOB->PTOR |= (1<<19);
-        //GPIOB_PDOR |= (1<<19);
-        delayMs(1500);
-        // ANTES: GPIOB_PDOR &= ~(1<<19);
-        GPIOB->PTOR &= ~(1<<19);
-        // delayMs(3000);
+    // 6. Selecione o canal de entrada ADC usando o registro ADC0_SC1A
+    ADC0->SC1[0] = ADC_SC1_ADCH(8); // Canal de entrada: CH0 (essa linha )
+
+    // 7. Monitore quando o flag de fim de conv. (COCO) no registrador ADC0_SC1A
+    int COCO = 0;
+    while (COCO == 0) {
+    COCO = ADC0->SC1[0] & ADC_SC1_COCO_MASK;
+    }
+
+    // 8. Quando o flag COCO for setado, leia o resultado da conversão em ADC0_RA e salve-o
+    int resultado;
+    resultado = ADC0->R[0];
+
+
+
     }
 
     return 0;
