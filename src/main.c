@@ -60,7 +60,7 @@ int main(void) {
         GPIOD->PDOR &= ~(1<<1); // liga azul (-> 0)
         
     } else {
-        GPIOB->PDOR &= ~(1<<19); // rde
+        GPIOB->PDOR &= ~(1<<19); // verde
         GPIOD->PDOR |= (1<<1); // azul
     }
 
